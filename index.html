@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mapa OOH – Yogurt YES | JCDecaux</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* YES Brand Colors */
+  --yes-blue:    #1e3a8a;   /* dark navy blue */
+  --yes-mid:     #2563eb;   /* medium blue */
+  --yes-sky:     #7dd3fc;   /* light sky blue */
+  --yes-light:   #e0f2fe;   /* very light blue bg */
+  --yes-white:   #ffffff;
+  --yes-cream:   #f0f8ff;   /* alice blue tint */
+
+  /* UI */
+  --surface:     #ffffff;
+  --border:      #bfdbfe;   /* blue-tinted border */
+  --text:        #1e3a8a;
+  --muted:       #6b84b8;
+  --orange:      #e05c00;
+  --teal:        #0369a1;
+  --shadow:      0 2px 8px rgba(30,58,138,.12), 0 1px 3px rgba(30,58,138,.08);
+  --radius:      12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--yes-light);
+  color:var(--text);
+  height:100dvh;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ── HEADER ── */
+#header{
+  background:linear-gradient(135deg, var(--yes-blue) 0%, var(--yes-mid) 100%);
+  padding:0 16px;
+  height:56px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+  box-shadow:0 2px 12px rgba(30,58,138,.3);
+  z-index:1000;
+}
+.logo-area{display:flex;align-items:center;gap:10px;min-width:0;}
+.yes-logo{
+  background:white;border-radius:8px;
+  padding:3px 8px;
+  font-family:'Nunito',sans-serif;
+  font-weight:900;font-size:16px;
+  color:var(--yes-blue);
+  letter-spacing:-.5px;
+  flex-shrink:0;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+}
+.yes-logo span{color:var(--yes-mid);}
+.header-text{min-width:0;}
+.brand{font-size:14px;font-weight:700;color:#fff;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sub{font-size:10px;color:var(--yes-sky);margin-top:1px;white-space:nowrap;}
+.badge{
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.3);
+  color:#fff;padding:4px 10px;
+  border-radius:20px;font-size:10px;font-weight:600;
+  white-space:nowrap;flex-shrink:0;
+}
+
+/* ── TOOLBAR ── */
+#toolbar{
+  background:var(--surface);
+  border-bottom:2px solid var(--border);
+  padding:0 12px;
+  min-height:46px;
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;overflow-x:auto;
+  z-index:1000;
+}
+#toolbar::-webkit-scrollbar{height:0;}
+.sect-label{
+  font-size:9px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.8px;
+  white-space:nowrap;flex-shrink:0;
+}
+.divider{width:1px;height:20px;background:var(--border);flex-shrink:0;}
+
+.pill{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 11px;border-radius:20px;
+  border:1.5px solid var(--border);background:var(--yes-cream);
+  color:var(--muted);font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+  flex-shrink:0;user-select:none;
+  -webkit-user-select:none;
+}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.pill:active{transform:scale(.95);}
+
+.pill.on-orange{border-color:var(--orange);color:var(--orange);background:#fff5ef;}
+.pill.on-teal  {border-color:var(--teal);  color:var(--teal);  background:#e0f7ff;}
+.pill.on-blue  {border-color:var(--yes-mid);color:var(--yes-mid);background:#eff6ff;}
+.pill.on-route {border-color:var(--rc,#999);color:var(--rc,#999);}
+
+/* "Todas" button */
+#btn-all-routes{
+  font-family:'Nunito',sans-serif;font-weight:800;
+  background:var(--yes-blue);color:#fff;
+  border-color:var(--yes-blue);
+  font-size:11px;
+}
+#btn-all-routes.on-blue{
+  background:var(--yes-mid);border-color:var(--yes-mid);color:#fff;
+}
+#btn-all-routes.off{
+  background:var(--yes-cream);color:var(--muted);border-color:var(--border);
+}
+
+/* ── MAP ── */
+#map-wrap{position:relative;flex:1;min-height:0;}
+#map{width:100%;height:100%;}
+
+/* ── LEGEND ── */
+#legend{
+  position:absolute;bottom:20px;left:10px;z-index:500;
+  background:var(--surface);
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  padding:11px 14px;
+  box-shadow:var(--shadow);
+  min-width:158px;
+}
+#legend h3{
+  font-size:9px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
+  font-family:'Nunito',sans-serif;
+}
+.leg{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:11px;color:var(--text);}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.leg-line{
+  width:20px;height:3px;border-radius:2px;flex-shrink:0;
+  background:linear-gradient(90deg,#ef4444,#3b82f6,#22c55e);
+}
+
+/* ── STATS BAR ── */
+#stats{
+  background:var(--yes-blue);
+  padding:5px 16px;
+  display:flex;gap:16px;align-items:center;flex-shrink:0;
+  overflow-x:auto;
+}
+#stats::-webkit-scrollbar{height:0;}
+.stat{font-size:10px;color:var(--yes-sky);white-space:nowrap;}
+.stat b{color:#fff;font-weight:700;}
+
+/* ── POPUP ── */
+.leaflet-popup-content-wrapper{
+  border-radius:12px!important;padding:0!important;overflow:hidden!important;
+  box-shadow:0 4px 20px rgba(30,58,138,.2)!important;
+  border:1.5px solid var(--border)!important;
+}
+.leaflet-popup-content{margin:0!important;font-family:'DM Sans',sans-serif;}
+.leaflet-popup-tip-container{display:none;}
+.leaflet-popup-close-button{color:#fff!important;font-size:18px!important;top:7px!important;right:10px!important;z-index:10;}
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 600px){
+  #header{height:50px;padding:0 12px;}
+  .yes-logo{font-size:14px;padding:2px 7px;}
+  .brand{font-size:13px;}
+  .badge{display:none;}
+
+  #toolbar{padding:0 8px;gap:6px;min-height:42px;}
+  .sect-label{display:none;}
+  .divider{display:none;}
+  .pill{padding:4px 9px;font-size:10px;}
+
+  #legend{
+    bottom:auto;top:10px;left:auto;right:10px;
+    min-width:140px;padding:9px 11px;
+  }
+  #legend h3{font-size:8px;}
+  .leg{font-size:10px;}
+
+  #stats{padding:4px 12px;gap:12px;}
+  .stat{font-size:9px;}
+}
+
+@media (max-width: 380px){
+  .pill{padding:4px 7px;font-size:9px;}
+  #btn-all-routes{padding:4px 8px;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-area">
+    <div class="yes-logo"><span>Yogurt</span> YES</div>
+    <div class="header-text">
+      <div class="brand">Mapa OOH · JCDecaux</div>
+      <div class="sub">Semana 19 · El Salvador</div>
+    </div>
+  </div>
+  <div class="badge">OpenStreetMap</div>
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="sect-label">Capas</span>
+
+  <div class="pill on-orange" id="btn-pantallas" onclick="toggleLayer('pantallas')">
+    <span class="dot"></span>Pantallas <span id="cnt-p"></span>
+  </div>
+  <div class="pill on-teal" id="btn-paradas" onclick="toggleLayer('paradas')">
+    <span class="dot"></span>Paradas <span id="cnt-b"></span>
+  </div>
+
+  <div class="divider"></div>
+  <span class="sect-label">Rutas</span>
+
+  <!-- MASTER TOGGLE -->
+  <div class="pill on-blue" id="btn-all-routes" onclick="toggleAllRoutes()">
+    <span class="dot" style="background:currentColor;"></span>Todas
+  </div>
+
+  <div id="routes-panel" style="display:flex;gap:5px;align-items:center;flex-shrink:0;"></div>
+</div>
+
+<!-- MAP -->
+<div id="map-wrap">
+  <div id="map"></div>
+
+  <div id="legend">
+    <h3>Leyenda</h3>
+    <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>Pantalla Digital</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--teal)"></div>Parada de Bus</div>
+    <div class="leg"><div class="leg-line"></div>Ruta de Bus</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div id="stats">
+  <div class="stat">Pantallas: <b id="s-p">–</b></div>
+  <div class="stat">Paradas: <b id="s-b">–</b></div>
+  <div class="stat">Rutas: <b>18</b></div>
+  <div class="stat" style="margin-left:auto;opacity:.7;">Toca marcador o ruta para detalles</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+// DATA – PANTALLAS
+// ═══════════════════════════════════════════════
+const PANTALLAS = [
+  {id:"SVPD000043A", name:"Av. Masferrer Norte hacia Redondel Luceiro",                    city:"San Salvador",      lat:13.7121, lng:-89.2308},
+  {id:"SVPD000044A", name:"49 Av. Sur frente a Autocentro, hacia Comalapa",                city:"San Salvador",      lat:13.6890, lng:-89.2350},
+  {id:"SVPD000035A", name:"Blvd. de Los Héroes, fte. China Wok",                           city:"San Salvador",      lat:13.7102, lng:-89.2230},
+  {id:"SVPD000008A", name:"San Miguel Av. Roosevelt, 50 mts. Metrocentro",                 city:"San Miguel",        lat:13.4833, lng:-88.1833},
+  {id:"SVPD000042A", name:"Carretera Panamericana Fte. Gran Vía",                          city:"Antiguo Cuscatlán", lat:13.6670, lng:-89.2680},
+  {id:"SVPD000028A", name:"Santa Ana Av. Independencia, acera Metrocentro",                city:"Santa Ana",         lat:13.9952, lng:-89.5584},
+  {id:"SVPD000016A", name:"Blvd. Constitución hacia Redondel",                             city:"San Salvador",      lat:13.7200, lng:-89.2050},
+  {id:"SVPD000020A", name:"Blvd. Los Próceres hacia Monumento Hermano Lejano",             city:"San Salvador",      lat:13.6980, lng:-89.2420},
+  {id:"SVPD000015A", name:"Blvd. Los Próceres hacia Blvd. Monseñor Romero",               city:"San Salvador",      lat:13.6960, lng:-89.2400},
+  {id:"SVPD000038A", name:"Carretera Comalapa hacia Hermano Lejano",                       city:"San Salvador",      lat:13.6830, lng:-89.2380},
+  {id:"SVPD000034A", name:"CC El Paseo, hacia Salvador del Mundo",                         city:"San Salvador",      lat:13.7030, lng:-89.2380},
+  {id:"SVPD000033A", name:"CC El Paseo, hacia Redondel Masferrer",                         city:"San Salvador",      lat:13.7040, lng:-89.2360},
+  {id:"SVPD000023A", name:"75 Av. Norte Colonia Escalón",                                  city:"San Salvador",      lat:13.7090, lng:-89.2310},
+  {id:"SVPD000030A", name:"Fte. Plaza Merliot hacia Santa Tecla",                          city:"Santa Tecla",       lat:13.6730, lng:-89.2800},
+  {id:"SVPD000029A", name:"Soyapango Blvd. del Ejército hacia Plaza Mundo",               city:"Soyapango",         lat:13.7100, lng:-89.1580},
+  {id:"SVPD000021A", name:"Calle Chiltiupan hacia Redondel Platillo",                      city:"Antiguo Cuscatlán", lat:13.6650, lng:-89.2750},
+  {id:"SVPD000017A", name:"Calle Antigua a Huizucar hacia Paso del Jaguar",                city:"San Salvador",      lat:13.6780, lng:-89.2220},
+  {id:"SVPD000014A", name:"Paseo General Escalón Fte. Colegio Sagrada Familia",            city:"San Salvador",      lat:13.7060, lng:-89.2480},
+  {id:"SVPD000012A", name:"Carretera Panamericana Fte. CC Feria Rosa",                     city:"San Salvador",      lat:13.6890, lng:-89.2500},
+  {id:"SVPD000011A", name:"San Miguel Av. Roosevelt fte. Omnisport",                       city:"San Miguel",        lat:13.4820, lng:-88.1800},
+  {id:"SVPD000009A", name:"49 Av. Sur fte. Estadio Mágico González",                      city:"San Salvador",      lat:13.6940, lng:-89.2340},
+  {id:"SVPD000001A", name:"Alameda Juan Pablo II Fte. Parque Infantil",                    city:"San Salvador",      lat:13.7010, lng:-89.2120},
+  {id:"SVPD000049A", name:"Fte. Ceiba de Guadalupe hacia Hospital El Salvador",            city:"San Salvador",      lat:13.7150, lng:-89.2180},
+  {id:"SVPD000051A", name:"Carretera Panamericana, frente a SISA",                         city:"Santa Tecla",       lat:13.6760, lng:-89.2820},
+  {id:"SVPD000013A", name:"Carretera Panamericana, Hacienda Real",                         city:"Antiguo Cuscatlán", lat:13.6700, lng:-89.2720},
+  {id:"SVPD000058A", name:"Paseo General Escalón Fte. Hospital Diagnóstico hacia Masferrer",city:"San Salvador",     lat:13.7080, lng:-89.2440},
+  {id:"SVPD000040A", name:"Blvd. Orden de Malta, Fte. Plaza Malta",                       city:"Antiguo Cuscatlán", lat:13.6690, lng:-89.2640},
+  {id:"SVPD000057A", name:"La Mascota contiguo a Plaza Las Azaleas",                       city:"San Salvador",      lat:13.6990, lng:-89.2350},
+  {id:"SVPD000054A", name:"Plaza Cristal entrada San Benito hacia Zona Rosa",              city:"San Salvador",      lat:13.6940, lng:-89.2290},
+  {id:"SVPD000055A", name:"Final Blvd. Arturo Castellanos fte. Terminal Occidente",        city:"San Salvador",      lat:13.6910, lng:-89.2160},
+  {id:"SVPD000053A", name:"Estadio Cuscatlán antes Gasolinera Texaco Loma Linda",          city:"San Salvador",      lat:13.6960, lng:-89.2270},
+  {id:"SVPD000061A", name:"Surf City Carretera Litoral hacia San Blas",                    city:"La Libertad",       lat:13.4900, lng:-89.3200},
+  {id:"SVPD000047A", name:"Av. Masferrer Norte en CC El Amate hacia Redondel Masferrer",   city:"San Salvador",      lat:13.7115, lng:-89.2295},
+  {id:"SVPD000068A", name:"Surf City frente a Malecón",                                    city:"La Libertad",       lat:13.4880, lng:-89.3220},
+  {id:"SVPD000067A", name:"Calle El Pedregal y Blvd. Cancillería hacia Gran Vía",         city:"Antiguo Cuscatlán", lat:13.6680, lng:-89.2700},
+  {id:"SVPD000074A", name:"Final Blvd. Constitución, 100 mts antes semáforo La Gloria",   city:"San Salvador",      lat:13.7220, lng:-89.2020},
+  {id:"SVPD000031A", name:"Fte. UFG hacia Salvador del Mundo",                             city:"San Salvador",      lat:13.7000, lng:-89.2300},
+  {id:"SVPD00076A",  name:"Carretera Del Litoral, Frente a Hospital Nacional San Pedro",   city:"Usulután",          lat:13.3450, lng:-88.4420}
+];
+
+// ═══════════════════════════════════════════════
+// DATA – PARADAS
+// ═══════════════════════════════════════════════
+const PARADAS = [
+  {code:"131001", name:"49 Avenida Sur",                     ref:"Antes 24 Calle Poniente",                  lat:13.6885, lng:-89.2345},
+  {code:"121004", name:"Blvd. Los Héroes",                   ref:"Salida del Hospital Bloom",                lat:13.7095, lng:-89.2225},
+  {code:"111003", name:"75 Avenida Norte",                   ref:"Junto a Despensa Don Juan #1",             lat:13.7085, lng:-89.2305},
+  {code:"371003", name:"79 Avenida Sur",                     ref:"Frente a Constru-Freud #2",                lat:13.6960, lng:-89.2380},
+  {code:"111012", name:"75 Avenida Sur",                     ref:"Antes Plaza Argentina",                    lat:13.6930, lng:-89.2310},
+  {code:"11006",  name:"Alameda Roosevelt",                  ref:"Frente a Monumento Monseñor Romero",       lat:13.7005, lng:-89.2270},
+  {code:"21002",  name:"Paseo General Escalón",              ref:"Acera Galerías #1",                        lat:13.7065, lng:-89.2490},
+  {code:"21006",  name:"Paseo General Escalón",              ref:"Acera APES #2",                            lat:13.7055, lng:-89.2510},
+  {code:"21019",  name:"Paseo General Escalón",              ref:"Frente a CASALCO #1",                      lat:13.7045, lng:-89.2530},
+  {code:"21017",  name:"Paseo General Escalón",              ref:"Frente a Galerías #2",                     lat:13.7070, lng:-89.2470},
+  {code:"31001",  name:"Alameda Manuel Enrique Araujo",      ref:"Junto a Pan American Life #1",             lat:13.7030, lng:-89.2560},
+  {code:"31004",  name:"Alameda Manuel Enrique Araujo",      ref:"Pasando Unidad de Salud Barrios",          lat:13.7025, lng:-89.2540},
+  {code:"11004",  name:"Alameda Roosevelt",                  ref:"Junto a Nash Salvador del Mundo",          lat:13.7010, lng:-89.2250},
+  {code:"811016", name:"Carretera Panamericana – Ant. Cuscatlán", ref:"Antes Gasolinera Puma El Trébol #1", lat:13.6660, lng:-89.2760},
+  {code:"351007", name:"Avenida Masferrer",                  ref:"Junto a Starbucks, antes 5ª Calle Pte.",   lat:13.7118, lng:-89.2300},
+  {code:"SS-16",  name:"Centro San Salvador",                ref:"Área Comercial",                           lat:13.7000, lng:-89.2040}
+];
+
+// ═══════════════════════════════════════════════
+// DATA – RUTAS
+// ═══════════════════════════════════════════════
+const RUTAS = [
+  {num:"26",  color:"#ef4444", desc:"San Marcos → San Jacinto → Centro → U. Nacional → Blvd. Constitución → 75 Av. Norte → San Marcos",
+   pts:[[13.6630,-89.1920],[13.6800,-89.2000],[13.7000,-89.2040],[13.7050,-89.2080],[13.7140,-89.2100],[13.7210,-89.2050],[13.7090,-89.2280],[13.7000,-89.2040],[13.6630,-89.1920]]},
+  {num:"5",   color:"#14b8a6", desc:"Parque Libertad → Calle Circunvalación Antiguo Cuscatlán",
+   pts:[[13.7000,-89.2040],[13.6920,-89.2350],[13.6800,-89.2700]]},
+  {num:"9",   color:"#3b82f6", desc:"Ciudad Credisa → Blvd. Ejército → Blvd. Venezuela → Centro → Hospital Bloom → Zacamil → Col. Santísima Trinidad",
+   pts:[[13.7200,-89.1500],[13.7100,-89.1900],[13.7000,-89.2040],[13.7100,-89.2220],[13.7280,-89.2100]]},
+  {num:"10",  color:"#ca8a04", desc:"Rancho Navarra → Col. Dolores → Centro SS → Parque Centenario → Apopa",
+   pts:[[13.7400,-89.2080],[13.7050,-89.2040],[13.7000,-89.2040],[13.7600,-89.1950]]},
+  {num:"11",  color:"#a855f7", desc:"San Marcos → Carretera Comalapa → Alameda Juan Pablo II → Metro Centro",
+   pts:[[13.6630,-89.1920],[13.6800,-89.2080],[13.7010,-89.2120],[13.7040,-89.2200]]},
+  {num:"22",  color:"#f97316", desc:"Col. San Jacinto → Terminal del Sur → Parque Libertad → Juan Pablo II → Parque Infantil → U. Nacional → San Antonio Abad",
+   pts:[[13.6800,-89.2000],[13.7000,-89.2040],[13.7010,-89.2120],[13.7090,-89.2200]]},
+  {num:"38C", color:"#22c55e", desc:"Apopa → Troncal Norte → Ciudad Delgado → Parque Libertad → Juan Pablo II → Metro Centro → Centrasén",
+   pts:[[13.7600,-89.1950],[13.7300,-89.1980],[13.7000,-89.2040],[13.7040,-89.2200],[13.6950,-89.2300]]},
+  {num:"44",  color:"#f43f5e", desc:"Ayutuxtepeque → Zacamil → U. Nacional → Blvd. Héroes → Terminal Occidente → Blvd. Próceres → Estadio Cuscatlán → Antiguo Cuscatlán",
+   pts:[[13.7280,-89.2100],[13.7100,-89.2090],[13.7040,-89.2200],[13.6920,-89.2160],[13.6980,-89.2420],[13.6820,-89.2680]]},
+  {num:"34",  color:"#f59e0b", desc:"Barrio Lourdes → Blvd. Venezuela → Centro → Feria Internacional → Multiplaza → Santa Elena",
+   pts:[[13.7000,-89.2040],[13.6950,-89.2200],[13.6820,-89.2600]]},
+  {num:"101D",color:"#8b5cf6", desc:"Col. San Antonio → Chiltiupán → Plaza Merliot → Gran Vía → La Mascota → Col. San Benito → Metro Centro → Santa Tecla",
+   pts:[[13.6730,-89.2850],[13.6650,-89.2750],[13.6900,-89.2400],[13.6990,-89.2260],[13.7010,-89.2120],[13.6730,-89.2850]]},
+  {num:"79",  color:"#06b6d4", desc:"Parque Bolívar → Paseo Escalón → Av. Manuel E. Araujo → Santa Tecla → Lourdes → Campos Verdes",
+   pts:[[13.6980,-89.2050],[13.7060,-89.2490],[13.6760,-89.2820],[13.6520,-89.3200]]},
+  {num:"30B", color:"#0ea5e9", desc:"Ayutuxtepeque → U. Nacional → Metro Centro → Paseo Escalón → Zona Rosa → Feria Internacional → Centro SS",
+   pts:[[13.7280,-89.2100],[13.7040,-89.2200],[13.7060,-89.2490],[13.6900,-89.2520],[13.7000,-89.2040]]},
+  {num:"101B",color:"#ec4899", desc:"Santa Tecla → Av. Araujo → Alameda Roosevelt → Plaza Centro Histórico",
+   pts:[[13.6760,-89.2820],[13.7025,-89.2560],[13.7010,-89.2250],[13.7000,-89.2040]]},
+  {num:"29",  color:"#fb923c", desc:"Ilopango → Blvd. del Ejército → Av. Independencia → Metro Centro",
+   pts:[[13.7020,-89.1280],[13.7100,-89.1700],[13.7000,-89.2040],[13.7040,-89.2200]]},
+  {num:"140", color:"#c084fc", desc:"San Martín → Plaza Mundo Soyapango → Blvd. Ejército → Excuartel",
+   pts:[[13.7200,-89.1100],[13.7100,-89.1580],[13.7000,-89.2040]]},
+  {num:"7D",  color:"#2dd4bf", desc:"Col. Guadalupe Soyapango → Terminal Oriente → Juan Pablo II → Blvd. Araujo → Salvador del Mundo → Santa Tecla → Galerías Escalón",
+   pts:[[13.7080,-89.1450],[13.7100,-89.1580],[13.7010,-89.2120],[13.7025,-89.2560],[13.6760,-89.2820],[13.7060,-89.2490]]},
+  {num:"205", color:"#84cc16", desc:"Terminal Occidente → Blvd. Venezuela → Terminal Sonsonate",
+   pts:[[13.6920,-89.2160],[13.6800,-89.2700],[13.7190,-89.7200]]},
+  {num:"51",  color:"#fb7185", desc:"Santa Ana – Col. Altos del Palmar → Av. San Felipe → Centro Santa Ana → Col. San Luis",
+   pts:[[14.0000,-89.5700],[13.9952,-89.5584],[14.0000,-89.5700]]}
+];
+
+// ═══════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════
+const map = L.map('map', {zoomControl:true, attributionControl:false}).setView([13.720,-89.220], 12);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  maxZoom:19, subdomains:'abcd'
+}).addTo(map);
+
+L.control.attribution({prefix:'© <a href="https://www.openstreetmap.org/copyright">OSM</a> · <a href="https://carto.com/">CARTO</a>'}).addTo(map);
+
+// ═══════════════════════════════════════════════
+// ICONS
+// ═══════════════════════════════════════════════
+function makeIcon(color, shape) {
+  const inner = shape === 'screen'
+    ? `<rect x="7" y="8" width="16" height="10" rx="2" fill="white" opacity=".95"/>
+       <rect x="9" y="10" width="12" height="6" rx="1" fill="${color}" opacity=".3"/>
+       <rect x="13" y="18" width="4" height="2" rx="1" fill="white" opacity=".7"/>`
+    : `<rect x="7" y="9" width="16" height="9" rx="2" fill="white" opacity=".95"/>
+       <circle cx="10.5" cy="21" r="1.8" fill="white" opacity=".9"/>
+       <circle cx="19.5" cy="21" r="1.8" fill="white" opacity=".9"/>
+       <rect x="9" y="11" width="12" height="1.5" rx=".75" fill="${color}" opacity=".25"/>`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="36" viewBox="0 0 30 36">
+    <filter id="s"><feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#0005"/></filter>
+    <path d="M15 0C6.7 0 0 6.7 0 15C0 23.3 15 36 15 36C15 36 30 23.3 30 15C30 6.7 23.3 0 15 0Z"
+          fill="${color}" filter="url(#s)"/>${inner}
+  </svg>`;
+  return L.divIcon({
+    html: svg, className:'',
+    iconSize:[30,36], iconAnchor:[15,36], popupAnchor:[0,-36]
+  });
+}
+
+const iconScreen = makeIcon('#e05c00','screen');
+const iconBus    = makeIcon('#0369a1','bus');
+
+// ═══════════════════════════════════════════════
+// POPUPS
+// ═══════════════════════════════════════════════
+const popFont = `font-family:'DM Sans',sans-serif`;
+
+function popPantalla(p){
+  return `<div style="${popFont};min-width:230px;">
+    <div style="background:#1e3a8a;padding:11px 14px 10px;">
+      <div style="color:#7dd3fc;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">📺 Pantalla Digital</div>
+      <div style="color:#fff;font-size:13px;font-weight:700;line-height:1.35;">${p.name}</div>
+      <div style="color:#bfdbfe;font-size:10px;margin-top:3px;">${p.id} · ${p.city}</div>
+    </div>
+    <div style="padding:10px 14px;font-size:11px;color:#1e3a8a;line-height:1.85;background:#f0f8ff;">
+      <b>Disponible desde:</b> 01/04/2026<br>
+      <b>Campaña:</b> Yogurt YES – Semana 19
+    </div>
+  </div>`;
+}
+
+function popParada(p){
+  return `<div style="${popFont};min-width:230px;">
+    <div style="background:#0369a1;padding:11px 14px 10px;">
+      <div style="color:#bae6fd;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">🚌 Parada de Bus – JCDecaux</div>
+      <div style="color:#fff;font-size:13px;font-weight:700;line-height:1.35;">${p.name}</div>
+      <div style="color:#bae6fd;font-size:10px;margin-top:3px;">Código: ${p.code}</div>
+    </div>
+    <div style="padding:10px 14px;font-size:11px;color:#0c4a6e;line-height:1.85;background:#f0f9ff;">
+      📍 <em>${p.ref}</em><br>
+      <b>Campaña:</b> Yogurt YES – Semana 19
+    </div>
+  </div>`;
+}
+
+function popRuta(r){
+  return `<div style="${popFont};min-width:220px;">
+    <div style="background:${r.color};padding:11px 14px 10px;">
+      <div style="color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">🚌 Ruta ${r.num}</div>
+    </div>
+    <div style="padding:10px 14px;font-size:11px;color:#374151;line-height:1.75;background:#fff;">${r.desc}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// MARKERS
+// ═══════════════════════════════════════════════
+const lyrs = {
+  pantallas: L.layerGroup(),
+  paradas:   L.layerGroup()
+};
+
+PANTALLAS.forEach(p => {
+  L.marker([p.lat,p.lng],{icon:iconScreen})
+   .bindPopup(popPantalla(p),{maxWidth:300,closeButton:true})
+   .addTo(lyrs.pantallas);
+});
+
+PARADAS.forEach(p => {
+  L.marker([p.lat,p.lng],{icon:iconBus})
+   .bindPopup(popParada(p),{maxWidth:300,closeButton:true})
+   .addTo(lyrs.paradas);
+});
+
+lyrs.pantallas.addTo(map);
+lyrs.paradas.addTo(map);
+
+// ═══════════════════════════════════════════════
+// ROUTES
+// ═══════════════════════════════════════════════
+const routeLyrs = {};
+const routeOn   = {};
+let   allOn     = true;
+
+RUTAS.forEach(r => {
+  const poly = L.polyline(r.pts,{color:r.color,weight:4,opacity:.83,smoothFactor:1.2})
+               .bindPopup(popRuta(r),{maxWidth:300});
+  poly.addTo(map);
+  routeLyrs[r.num] = poly;
+  routeOn[r.num]   = true;
+});
+
+// ═══════════════════════════════════════════════
+// ROUTE PANEL
+// ═══════════════════════════════════════════════
+const panel = document.getElementById('routes-panel');
+RUTAS.forEach(r => {
+  const b = document.createElement('div');
+  b.className = 'pill on-route';
+  b.id = `rb-${r.num}`;
+  b.style.setProperty('--rc', r.color);
+  b.innerHTML = `<span class="dot" style="background:${r.color};"></span>${r.num}`;
+  b.title = r.desc;
+  b.addEventListener('click', () => {
+    routeOn[r.num] = !routeOn[r.num];
+    if(routeOn[r.num]){ routeLyrs[r.num].addTo(map); b.classList.add('on-route'); }
+    else              { map.removeLayer(routeLyrs[r.num]); b.classList.remove('on-route'); }
+    // Update master button state
+    const anyOn = RUTAS.some(x => routeOn[x.num]);
+    const allActive = RUTAS.every(x => routeOn[x.num]);
+    allOn = allActive;
+    const master = document.getElementById('btn-all-routes');
+    if(allActive){ master.textContent=''; master.innerHTML='<span class="dot" style="background:currentColor;"></span>Todas'; master.className='pill on-blue'; master.style=''; }
+    else if(!anyOn){ master.innerHTML='<span class="dot" style="background:currentColor;"></span>Todas'; master.className='pill off'; }
+    else { master.innerHTML='<span class="dot" style="background:currentColor;"></span>Algunas'; master.className='pill on-blue'; }
+  });
+  panel.appendChild(b);
+});
+
+// ═══════════════════════════════════════════════
+// MASTER ROUTE TOGGLE
+// ═══════════════════════════════════════════════
+function toggleAllRoutes(){
+  allOn = !allOn;
+  const master = document.getElementById('btn-all-routes');
+  RUTAS.forEach(r => {
+    routeOn[r.num] = allOn;
+    const b = document.getElementById(`rb-${r.num}`);
+    if(allOn){ routeLyrs[r.num].addTo(map); b.classList.add('on-route'); }
+    else     { map.removeLayer(routeLyrs[r.num]); b.classList.remove('on-route'); }
+  });
+  if(allOn){ master.innerHTML='<span class="dot" style="background:currentColor;"></span>Todas'; master.className='pill on-blue'; master.style=''; }
+  else     { master.innerHTML='<span class="dot" style="background:currentColor;"></span>Todas'; master.className='pill off'; }
+}
+
+// ═══════════════════════════════════════════════
+// LAYER TOGGLE
+// ═══════════════════════════════════════════════
+const layerOn = {pantallas:true, paradas:true};
+function toggleLayer(name){
+  layerOn[name] = !layerOn[name];
+  if(layerOn[name]) lyrs[name].addTo(map);
+  else              map.removeLayer(lyrs[name]);
+  const b   = document.getElementById(`btn-${name}`);
+  const cls = name==='pantallas' ? 'on-orange' : 'on-teal';
+  layerOn[name] ? b.classList.add(cls) : b.classList.remove(cls);
+}
+
+// ═══════════════════════════════════════════════
+// COUNTS
+// ═══════════════════════════════════════════════
+document.getElementById('cnt-p').textContent = `(${PANTALLAS.length})`;
+document.getElementById('cnt-b').textContent = `(${PARADAS.length})`;
+document.getElementById('s-p').textContent   = PANTALLAS.length;
+document.getElementById('s-b').textContent   = PARADAS.length;
+</script>
+</body>
+</html>
